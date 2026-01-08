@@ -1,0 +1,317 @@
+# Hash User Manual
+
+## Contents
+
+[Introduction](#intro)  
+[How to Use Hash (In More Detail)](#howtostart)  
+
+- [Hash Command Line Options Summary](#optionssummary)  
+- [How to Use Hash to Verify a Checksum Given on the Command Line](#optc)  
+- [How to Get Hash to Use a Checksum File](#optf)  
+- [How to Use Hash to Generate a Checksum](#optg)  
+
+[Licence](#licence)  
+[Where to Get Hash](#gethash)  
+[How to Compile Hash](#compile)  
+
+## <a id="intro"></a>Introduction
+
+Although Windows comes with a program (namely, CertUtil) that can produce SHA512, SHA256, etc,
+hashes of files, it doesn't have a convenient interface that you can use to check them
+against a known value, the way the Unix utilities sha512sum, sha256sum, etc, do.
+You can of course visually compare them, but hashes tend to be very long so the process is
+tedious and error-prone.
+
+This program, **hash**, provides an interface to CertUtil that fills that gap.
+
+That is, instead of doing something like
+
+	certutil -hashfile file_to_check.exe SHA512
+
+and then visually comparing the hash produced against one that is saved
+in, say, `sha512.txt`, you can simply run
+
+	hash -f sha512.txt file_to_check.exe
+
+and it will extract the relevant checksum from `sha512.txt`, run CertUtil behind
+the scenes, compare the hashes, and tell you the results.
+
+**Hash** can also take a checksum value directly on the command line, since some websites
+publish their checksums on a web page instead of in a downloadable file. So all you need
+is to copy and paste it onto the command line, like so:
+
+	hash -c 3e938ccf76200b05fc1c24f8dbf88688 file_to_check.exe
+
+**Hash** automatically deduces which hash algorithm is used, whether MD5, SHA1, SHA256,
+SHA384 or SHA512, so that you do not need to specify it.
+
+
+## <a id="howtostart"></a>How to Use Hash (In More Detail)
+
+### <a id="optionssummary"></a>Hash Command Line Options Summary
+
+The **hash** command line options are, very briefly, as follows:
+
+	Method 1: hash -c <checksum> [-a <algorithm>] [-v] <file>
+	Method 2: hash -f <chksum_file> [-a <algorithm>] [-n <name_to_match>] [-t <chksum_file_type>] [-k] [-v] <file>
+	Method 3: hash -g [-a <algorithm>] [-f <chksum_file>] [-o] [-v] <file>
+	Method 4: hash [-h]
+
+	<file>                  The name of the file to check.
+	-a algorithm            One of {MD2|MD4|MD5|SHA1|SHA256|SHA384|SHA512}.
+	-c <checksum>           The checksum value to compare against.
+	-f <chksum_file>        The checksums file to read or write to.
+	-g                      Generate hash (default: SHA512).
+	-h                      Display a brief help message.
+	-k                      Keep path prefix.
+	-n <name_to_match>      Use the checksum for <name_to_match> instead.
+	-o						Overwrite existing checksum file.
+	-t <chksum_file_type>   One of {gnu|hashonly|deno}.
+	-v                      (verbose) Show detailed messages.
+
+More information, including what each option means, can be found in the sub-sections below.
+
+### <a id="optc"></a>How to Use Hash to Verify a Checksum Given on the Command Line
+
+To verify that a file has a checksum equal to a particular hash, use:
+
+	hash -c <checksum> <file>
+
+where `<checksum>` is the known hash you want to check against, and `<file>` is the
+file under investigation. **Hash** automatically determines the name of the hash algorithm
+to pass to CertUtil.
+
+In the unlikely situation where you are using an MD2 or MD4 hash, you will need to specify
+the name of the algorithm, otherwise **hash** will think that you have an MD5 hash. Do
+it this way:
+
+	hash -c <checksum> -a algorithm <file>
+
+where `algorithm` is `MD2` or `MD4`. In fact, the -a option accepts any of the algorithm names
+that CertUtil accepts. That is, you can also specify `MD5`, `SHA1`, `SHA256`, `SHA384`
+or `SHA512` if you wish. Note that once you state a particular algorithm, **hash** will
+blindly pass that to CertUtil without checking for validity.
+
+If **hash** returns an error message, and you want more information, reissue the command
+with an additional `-v` (for "verbose") option.
+
+	hash -v -c <checksum> -a algorithm <file>
+
+This will cause **hash** to be more talkative about what it's doing, and
+will also print the full output that CertUtil issued. This verbose output is not displayed
+by default because in most cases, all the user really wants to know is whether the hashes
+match or not. All the other output is just noise, and makes it harder to tell at a
+glance what the results are.
+
+### <a id="optf"></a>How to Get Hash to Use a Checksum File
+
+To verify that a file has the same hash as that found in a checksum file, use:
+
+	hash -f <chksum_file> <file>
+
+So, for example, if you want to check that the `file_to_check.exe` you downloaded
+has the same hash as that stated in the corresponding `sha512.txt` file, type:
+
+	hash -f sha512.txt file_to_check.exe
+
+The `-v` (verbose) option can also be used here, if you want to know what **hash** is
+doing behind the scenes, and what CertUtil says about the file. That is, use:
+
+	hash -v -f sha512.txt file_to_check.exe
+
+The most common checksum file format that I have encountered so far has been the
+default format produced by programs like sha512sum, sha256sum, md5sum and the like.
+On Linux systems, these programs typically come from the GNU coreutils package,
+so in the interest of brevity, I will just call this the GNU format, even though
+there are undoubtedly other programs that produce this type of files.
+**Hash** is able to recognize this type of checksum file, and should be able to
+extract the checksum for the specified file from it without trouble.
+
+Another checksum file format that **hash** is able to handle is a file that has
+a single line containing the checksum, and nothing else.
+
+**Hash** is also able to handle a third type of checksum file, namely that which
+is published on the Deno repository "releases" page to accompany its files.
+(And yes, I added this custom format because I use that software, and wanted
+**hash** to support it out-of-the-box.)
+
+Provided the checksum file is properly formatted, and is in one of the above 3 formats,
+**hash** should be able to automatically determine its format and obtain the hash
+to check against your file.
+
+If you find that **hash** has not recognized the format correctly, you can force
+it to treat the file as being in a particular format. But note that
+if you do so, **hash** will blindly accept what you specify on the command line,
+bypassing its usual detection routine, and parse the file accordingly, even if
+it is not what you say it is. If you're wrong about the format, **hash**
+will give you spurious results. This is not a bug. You forced it to parse
+the file that way, and so it did.
+
+The options to force the use of a particular format are:
+
+- -t gnu
+- -t hashonly
+- -t deno
+
+The `-t gnu` option tells **hash** that the checksum file is the default one
+produced by one of the GNU utilities or their compatible workalikes.
+
+The `-t hashonly` option says that the checksum file contains only a single
+line that comprises the hash.
+
+Finally, the `-t deno` option forces **hash**
+to treat the file as one used on the Deno repository.
+
+When **hash** checks your file against those listed in a
+GNU-formatted checksum file, it compares only the filename portion (that is,
+its name and extension, without the drive and directory prefix if any) with
+the names listed in the file. For example, if you typed:
+
+	hash -f sha512sums.txt d:\saved-files\putty.zip
+
+**hash** will look into `sha512sums.txt` for the name `putty.zip`,
+ignoring "`d:\saved-files\`" since the latter is specific to your own system's
+disk organization.
+
+This is usually the desired behaviour. However, some websites embed directories into
+their checksum file. For example, the Putty checksum file has lines like the
+following (I have only extracted 3 lines for this example, and truncated the SHA512
+checksums since they are very long.)
+
+	a335...42c6  w32/putty.zip
+	7816...a3d4  w64/putty.zip
+	ec97...7ea2  wa64/putty.exe (installer version)
+
+There are at least 3 ways you can use hash to check (say) `putty.zip` when you
+have a checksum file like this. One way is to use the `-n <name_to_match>` option. Let's
+say your `putty.zip` is the 64 bit version, so you want **hash** to use the checksum
+associated with the "w64/putty.zip" line.
+
+	hash -n w64/putty.zip -f sha512sums.txt d:\saved-files\putty.zip
+
+**Hash** will in such a case use the hash associated with "w64/putty.zip",
+in this case, `7816...a3d4` (as I said, I truncated the hash for this manual;
+the original is 128 characters long).
+
+Incidentally, the `-n` option is also useful for cases where the developer put some
+comments on the same line as the checksum like the third line in my example
+above:
+
+	ec97...7ea2  wa64/putty.exe (installer version)
+
+In this case, "`(installer version)`" is actually not part of the filename, and
+your file is just a simple `putty.exe`. The following command line
+will match it, assuming your file is in `d:\saved-files\` as before:
+
+	hash -n "wa64/putty.exe (installer version)" -f sha512sums.txt d:\saved-files\putty.exe
+
+The double quotation marks are necessary since the text to match contains spaces.
+
+The second way is to use the `-c` option (see above section in this manual) and
+simply copy and paste the hash onto the command line.
+
+	hash -c 7816...a3d4 d:\saved-files\putty.zip
+
+The third way is to replicate the directory structure in the checksums file.
+So, for this example, you may have created a `w64` directory and moved `putty.zip` there.
+The `-k` option is then used to tell Putty not to remove any drive and directory
+from the filename when looking for a match.
+
+	hash -k -f sha512sums.txt w64/putty.zip
+
+Notice that I used the forward slash '/' for the directory separator here (instead
+of the usual Windows backslash), since that is the way the checksums file has
+listed its entry. (Otherwise hash will claim that there is no matching entry.)
+This is not a problem for Windows or CertUtil, since they accept
+'/' and '\\' as directory separators.
+
+As always, if you run into problems, the verbose option, `-v`, can be helpful.
+It causes **hash** to tell you which format it thinks your checksums file is in, as well
+as print the full output issued by CertUtil. It is useful if you receive
+an error message, and you are not sure why it happened.
+
+### <a id="optg"></a>How to Use Hash to Generate a Checksum
+
+To get **hash** to generate a checksum, use the `-g` option. For example,
+the following command line does this for a file called `file_to_check.exe`.
+
+	hash -g file_to_check.exe
+
+This will print the SHA512 checksum onto the screen.
+
+It is also possible to get **hash** to create a checksum file, formatted in
+a manner compatible with sha512sum, sha384sum, sha256sum, sha1sum and md5sum
+from the GNU coreutils package. To do this, use the `-f` option to specify
+a checksum file.
+
+	hash -g -f sha512.txt file_to_check.exe
+
+By default, if the checksum file does not exist, it will be created and
+the hash, together with the filename, added to it.
+If it already exists, your hash and filename will be added
+to the end of it (that is, appended to it). Since **hash** does not
+accept more than one file per invocation, this allows you to add multiple
+files to a single checksum file; just run **hash** on each file while
+specifying the same argument to `-f`.
+
+If you want **hash** to overwrite any existing checksum file of the
+same name, instead of appending to it, add the `-o` option to the command
+line.
+
+	hash -g -o -f sha512.txt file_to_check.exe
+
+In this case, if `sha512.txt` exists, its original contents will be
+replaced with the new information generated by **hash**.
+
+As before, if you want a different algorithm from the default SHA512,
+use the `-a` option.
+
+Note: although the checksum file created is compatible with the GNU
+tools, this compatibility only applies to the format of the file.
+If you use a filename that includes drive letters and backslashes,
+such as `d:\data\file_to_check.exe`, users of Linux, macOS, FreeBSD,
+OpenBSD, and other Unix-type systems will not be able to
+automatically get their software to verify your files, since
+Unix-type systems use '/' instead of '\\' to separate their directory
+names. And they don't have drive letters. If you want your file to be
+usable on those systems, either use '/' to separate
+your directory names and omit the drive letter altogether, or,
+even better, don't include the drive and directory at all.
+
+## <a id="licence"></a>Licence
+
+**Hash** is:
+
+- Copyright 2020-2026 by Christopher Heng. All rights reserved.
+- Released under the terms of the GNU General Public License version 3.
+
+## <a id="gethash"></a>Where to Get Hash
+
+The pre-compiled binary (that is, executable) and source code
+for **hash** can be download from the
+[**hash** releases page](https://github.com/ChristopherHeng/hash/releases).
+
+The git repository is available at:  
+[https://github.com/ChristopherHeng/hash](https://github.com/ChristopherHeng/hash)
+
+## <a id="compile"></a>How to Compile Hash
+
+> _You can skip this section if you only want to use the pre-compiled binary.
+> It is meant for those who want to compile **hash** themselves._
+
+To build **hash** with Visual Studio, run
+"x64 Native Tools Command Prompt for VS" from the Windows Start menu, and type:
+
+	nmake -f makefile.vs all
+
+Or, to compile with the Clang that is installed via the
+Visual Studio installer, type:
+
+	nmake -f makefile.clang all
+
+If you use gcc (MinGW-w64), do the following:
+
+	make -f makefile.gcc all
+
+The binary distributed on the Releases page was compiled with Visual Studio 2026.
+

@@ -1,0 +1,71 @@
+# Makefile for building hash with MinGW-w64 gcc, GNU make
+# Copyright 2020-2026 by Christopher Heng. All rights reserved.
+
+CC = gcc
+PANDOC = pandoc
+RM = del
+
+CFLAGS = -O3 -Wall -Wextra -Werror -c
+LDFLAGS = -s
+
+DOCSDIR = ./docs
+
+HASH = hash.exe
+MANUAL = readme.html
+OBJS =	hash.o \
+	compare_hashes_and_report.o \
+	create_checksum_file.o \
+	escape_filename.o \
+	get_algorithm_and_hash_from_file.o \
+	get_hash_algorithm.o \
+	get_hash_algorithm_from_len.o \
+	hashes_match.o \
+	process_file.o \
+	safely_add_three_size_t_operands.o \
+	show_usage.o \
+	strip_path_prefix.o
+
+.c.o:
+	$(CC) $(CFLAGS) $<
+
+
+# targets
+all: $(HASH)
+
+dist: $(HASH) $(MANUAL)
+
+clean:
+	del $(OBJS)
+	del $(HASH) $(MANUAL)
+
+$(HASH): $(OBJS)
+	$(CC) $(LDFLAGS) -o $(HASH) $(OBJS)
+
+# objects
+
+compare_hashes_and_report.o: compare_hashes_and_report.c hash.h config.h
+
+create_checksum_file.o: create_checksum_file.c hash.h config.h
+
+escape_filename.o: escape_filename.c hash.h config.h
+
+get_algorithm_and_hash_from_file.o: get_algorithm_and_hash_from_file.c hash.h config.h
+
+get_hash_algorithm.o: get_hash_algorithm.c hash.h config.h
+
+get_hash_algorithm_from_len.o: get_hash_algorithm_from_len.c hash.h config.h
+
+hash.o: hash.c hash.h config.h
+
+hashes_match.o: hashes_match.c hash.h config.h
+
+process_file.o: process_file.c hash.h config.h
+
+readme.html: $(DOCSDIR)/README.md $(DOCSDIR)/metadata.yml
+	$(PANDOC) -f gfm -t html -o readme.html -s -V mainfont=Arial -V fontsize=16pt -V maxwidth=45em --metadata-file=$(DOCSDIR)/metadata.yml $<
+
+safely_add_three_size_t_operands.o: safely_add_three_size_t_operands.c hash.h
+
+show_usage.o: show_usage.c hash.h config.h
+
+strip_path_prefix.o: strip_path_prefix.c hash.h
