@@ -44,6 +44,10 @@ set HASH_EXTRA_ARGS=-c 3e938ccf76200b05fc1c24f8dbf88688
 call test-sub no-such-file.msg nosuchfile.txt
 set HASH_EXTRA_ARGS=
 
+set HASH_EXTRA_ARGS=-vc sha256:1dd87bdf28e806d84497eff89e43c9581cb42ae42fa4146f7b767811a88952bf
+call test-sub ghprefix-verbose.msg file-2.txt
+set HASH_EXTRA_ARGS=
+
 set HASH_EXTRA_ARGS=-g
 call test-sub basic-generate.msg file-1.txt
 set HASH_EXTRA_ARGS=

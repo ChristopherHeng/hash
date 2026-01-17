@@ -1,5 +1,13 @@
-# Makefile for building hash with MinGW-w64 gcc, GNU make
+# makefile.gcc
+# GNU make makefile; for building hash with MinGW-w64 gcc
 # Copyright 2020-2026 by Christopher Heng. All rights reserved.
+
+# To make hash.exe
+#	make -f makefile.gcc all
+# To make both hash.exe and readme.html
+#	make -f makefile.gcc dist
+# To remove all generated files
+#	make -f makefile.gcc clean
 
 CC = gcc
 PANDOC = pandoc
@@ -9,12 +17,13 @@ CFLAGS = -O3 -Wall -Wextra -Werror -c
 LDFLAGS = -s
 
 DOCSDIR = ./docs
+LIBDIR = ./lib
 
 HASH = hash.exe
-MANUAL = readme.html
 OBJS =	hash.o \
 	compare_hashes_and_report.o \
 	create_checksum_file.o \
+	dowildcard.o \
 	escape_filename.o \
 	get_algorithm_and_hash_from_file.o \
 	get_hash_algorithm.o \
@@ -23,6 +32,7 @@ OBJS =	hash.o \
 	process_file.o \
 	safely_add_three_size_t_operands.o \
 	show_usage.o \
+	skip_hash_prefix.o \
 	strip_path_prefix.o
 
 .c.o:
@@ -32,11 +42,11 @@ OBJS =	hash.o \
 # targets
 all: $(HASH)
 
-dist: $(HASH) $(MANUAL)
+dist: $(HASH) readme.html
 
 clean:
 	del $(OBJS)
-	del $(HASH) $(MANUAL)
+	del $(HASH) readme.html
 
 $(HASH): $(OBJS)
 	$(CC) $(LDFLAGS) -o $(HASH) $(OBJS)
@@ -46,6 +56,9 @@ $(HASH): $(OBJS)
 compare_hashes_and_report.o: compare_hashes_and_report.c hash.h config.h
 
 create_checksum_file.o: create_checksum_file.c hash.h config.h
+
+dowildcard.o: $(LIBDIR)/dowildcard.c
+	$(CC) $(CFLAGS) $<
 
 escape_filename.o: escape_filename.c hash.h config.h
 
@@ -68,4 +81,6 @@ safely_add_three_size_t_operands.o: safely_add_three_size_t_operands.c hash.h
 
 show_usage.o: show_usage.c hash.h config.h
 
-strip_path_prefix.o: strip_path_prefix.c hash.h
+skip_hash_prefix.o: skip_hash_prefix.c hash.h config.h
+
+strip_path_prefix.o: strip_path_prefix.c hash.h config.h

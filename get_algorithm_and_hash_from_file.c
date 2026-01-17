@@ -10,6 +10,11 @@
 #include <windows.h> // MAX_PATH
 #include "hash.h"
 
+#if defined(__clang__)
+// disable warning about my use of checksum[i] and filename[i] (unsafe pointer arithmetic)
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+#endif
+
 #define	MAX_CHECKSUM_LENGTH	128		// SHA512 length
 #define	CHECKSUM_BUFFER_LENGTH	(MAX_CHECKSUM_LENGTH + 4) // +1 for null byte, +3 extra, just in case
 #define	DENO_CHKSUM_START_STRING	"\nAlgorithm : "	// string to match to see if it's a Deno checksum file
@@ -106,7 +111,7 @@ char * get_algorithm_and_hash_from_file( char * target_filename, char ** checksu
 						fflush( stdout ); // make sure all verbose messages preceding this get printed first
 						fprintf( stderr, "%s: internal error: unknown chksum_file_type value: %d\n", program_name, actual_file_format );
 						exit( EXIT_FAILURE );
-						break ;
+						// break ;
 				}
 				fprintf( stdout, "%s: forced by user to treat checksum file as %s\n", program_name, user_choice_string );
 
@@ -158,7 +163,7 @@ char * get_algorithm_and_hash_from_file( char * target_filename, char ** checksu
 				// we reached EOF at the beginning of a line (and therefore no checksum found on this line)
 				break ;
 			}
-			algorithm = get_hash_algorithm_from_len( i ) ; // get_hash_algorithm_from_len() can handle i having incorrect values
+			algorithm = get_hash_algorithm_from_len( (size_t) i ) ; // get_hash_algorithm_from_len() can handle i having incorrect values
 			if (algorithm == NULL) {
 				// we've got a checksum, but it doesn't match any algorithm we know
 				fflush( stdout ); // make sure all verbose messages preceding this get printed first

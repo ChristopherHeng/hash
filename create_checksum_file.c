@@ -13,20 +13,21 @@
 */
 void create_checksum_file( char * filename )
 {
+	static FILE * fp = NULL ;
 	char * filename_for_output ;
 	int has_backslashes ;
-	FILE * fp ;
 	int retval_from_fprintf ;
 
-	fp = fopen( file_with_hashes, (overwrite_existing_checksum_file ? "wb" : "ab") ) ;
-		// need to open in binary mode ("b") because the GNU coreutils expect lines to
-		// end with \n and not \r\n
-
 	if (fp == NULL) {
-		fflush( stdout ); // just in case we're in verbose mode and stuff was printed to stdout earlier
-		fprintf( stderr, "%s: unable to open checksum file %s\n", program_name, file_with_hashes );
-		exit( EXIT_FAILURE );
+		// only open the file if it hasn't already been opened
+		fp = fopen( file_with_hashes, (overwrite_existing_checksum_file ? "wb" : "ab") ) ;
+		if (fp == NULL) {
+			fflush( stdout ); // just in case we're in verbose mode and stuff was printed to stdout earlier
+			fprintf( stderr, "%s: unable to open checksum file %s\n", program_name, file_with_hashes );
+			exit( EXIT_FAILURE );
+		}
 	}
+	files_left-- ;
 
 	filename_for_output = escape_filename( filename, &has_backslashes );
 
@@ -38,11 +39,15 @@ void create_checksum_file( char * filename )
 	}
 
 	if (retval_from_fprintf < 0) {
+		fflush( stdout );
 		fprintf( stderr, "%s: error writing checksum file %s\n", program_name, file_with_hashes );
 		exit( EXIT_FAILURE );
 	}
 
 	free( filename_for_output );
-	fclose( fp );
+	if (files_left == 0) {
+		fclose( fp );
+		fp = NULL ; // defensive (to help in debugging if need be)
+	}
 	return ;
 }

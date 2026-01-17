@@ -19,6 +19,7 @@ extern char * version_string ;
 extern char * copyright_start_years ;
 
 extern int chksum_file_type ;
+extern int files_left ;
 extern int generate_hash ;
 extern int keep_path_prefix ;
 extern int overwrite_existing_checksum_file ;
@@ -37,6 +38,7 @@ extern char * get_algorithm_and_hash_from_file( char * target_filename, char ** 
 extern void process_file( char * filename, char * user_algorithm, char * user_hash );
 extern int safely_add_three_size_t_operands( size_t * result, size_t first, size_t second, size_t third );
 extern void show_usage( void );
+extern char * skip_hash_prefix ( char * hash_string );
 extern char * strip_path_prefix( char * filename );
 
 #endif

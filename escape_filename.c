@@ -9,6 +9,11 @@
 #include <string.h> // strlen(), strdup()
 #include "hash.h"
 
+#if defined(__clang__)
+// disable warning about unsafe pointer arithmetic in the for and while loops
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+#endif
+
 /*
 	Note that this function calls exit() at multiple points.
 

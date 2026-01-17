@@ -1,6 +1,6 @@
 /*
 	getopt.c
-	Copyright 1996-2025 by Christopher Heng. All rights reserved.
+	Copyright 1996-2026 by Christopher Heng. All rights reserved.
 
 	This code is released under the terms of the GNU General Public
 	License Version 3. You should have received a copy of the GNU
@@ -43,11 +43,20 @@
 	by the modern implementations found in GNU and BSD based systems.
 
 	See also the documentation preceding the function itself.
+
+	Last updated: 14.1.2026
 */
 
 #if defined(_MSC_VER)
 // disable warnings about fprintf() not being inlined, new in VS 17.7 when compiled with /Wall
 #pragma warning(disable: 4710)
+#endif
+
+#if defined(__clang__)
+// disable warnings about unsafe buffer access and unsafe pointer arithmetic
+// for: argv[optind], argv[optind++], *++curptr, and *++s
+// since the compiler cannot determine at compile-time whether the above are safe
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
 #endif
 
 #include <stdio.h>	/* fprintf() */

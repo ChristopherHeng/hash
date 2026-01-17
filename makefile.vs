@@ -7,13 +7,16 @@
 # To remove all the generated files (equivalent of clobber in other makefiles)
 #	nmake -f makefile.vs clean
 # The following makes the binary distribution zip and accompanying SHA512 checksum file
-#	nmake -f makefile.vs VERSION=8.0.1 dist
+#	nmake -f makefile.vs VERSION=9.0.0 dist
 # The following runs the tests:
 #	nmake -f makefile.vs test
 
+# To make hash.exe with Clang (VS version) (to check for errors)
+#	nmake -f makefile.vs CC=clang-cl all
+
 # The following is used for generating the binary distribution zip; override on the nmake command line.
 !ifndef VERSION
-VERSION = 8.0.1
+VERSION = 9.0.0
 !endif
 
 # programs
@@ -42,7 +45,21 @@ CFLAGS = /nologo /c /O2 /DNDEBUG /std:c17 /MT /utf-8 /Wall /WX /I"$(LIBDIR)\\" /
 	# /WX - treat all warnings as errors
 	# /I - include directory
 	# /Fo - output directory
-LDFLAGS = /NOLOGO /INCREMENTAL:NO /WX /OPT:REF /OPT:ICF /DEPENDENTLOADFLAG:0x800 /OUT:$(HASH) /SUBSYSTEM:CONSOLE
+LDFLAGS = /NOLOGO /INCREMENTAL:NO /WX /OPT:REF /OPT:ICF /DEPENDENTLOADFLAG:0x800 /OUT:$(HASH) /SUBSYSTEM:CONSOLE setargv.obj
+	# for details, see https://docs.microsoft.com/en-us/cpp/build/reference/linker-options?view=msvc-170
+	# /OUT - output filename
+	# /SUBSYSTEM - type of exe
+	# /NOLOGO - don't display sign-on banner
+	# /INCREMENTAL:NO - don't include padding and thunks to facilitate incremental linking
+	# not specified because the linker should be able to infer from the obj files: /MACHINE:X64 - x64 target
+	# /WX - treat linker warnings as errors
+	# /OPT:REF - eliminate unreferenced functions and data
+	# /OPT:ICF - perform identical COMDAT folding
+	# /DEPENDENTLOADFLAG:0x800 - load statically linked imports from the %windows%\system32 directory only
+	#   Note that this only works in Windows 10 version 1607 and later. Ignored in earlier versions of Windows.
+	#   see documentation at https://learn.microsoft.com/en-us/cpp/build/reference/dependentloadflag?view=msvc-160
+	#   and https://devblogs.microsoft.com/oldnewthing/20230328-00/?p=107978
+	# setargv.obj - expand wildcards on the command line
 
 # directories
 BINDIR = .
@@ -53,8 +70,6 @@ LIBDIR = .\lib
 HASH = hash.exe
 HASH_BINARY_DIST = hash-$(VERSION)-x86-64.zip
 HASH_BINARY_DIST_CHECKSUM = $(HASH_BINARY_DIST).sha512
-LICENCE = COPYING.txt
-MANUAL = readme.html
 OBJS =	hash.obj \
 	compare_hashes_and_report.obj \
 	create_checksum_file.obj \
@@ -67,6 +82,7 @@ OBJS =	hash.obj \
 	process_file.obj \
 	show_usage.obj \
 	safely_add_three_size_t_operands.obj \
+	skip_hash_prefix.obj \
 	strip_path_prefix.obj
 
 # Implicit rules
@@ -89,18 +105,15 @@ test: $(HASH)
 # and so don't know the exact name of those files.
 clean:
 	$(RM) $(OBJS)
-	$(RM) $(HASH) $(MANUAL) $(LICENCE) hash-*.zip hash-*.sha512
+	$(RM) $(HASH) readme.html COPYING.txt hash-*.zip hash-*.sha512
 
-$(HASH_BINARY_DIST): $(HASH) $(MANUAL) $(LICENCE)
-	$(TAR) -a -c -f $(HASH_BINARY_DIST) $(HASH) $(MANUAL) $(LICENCE)
+$(HASH_BINARY_DIST): $(HASH) readme.html COPYING.txt
+	$(TAR) -a -c -f $(HASH_BINARY_DIST) $(HASH) readme.html COPYING.txt
 
-$(HASH_BINARY_DIST_CHECKSUM): $(HASH_BINARY_DIST) $(HASH) $(MANUAL) $(LICENCE)
-	$(HASH) -go -f $(HASH_BINARY_DIST_CHECKSUM) $(HASH)
-	$(HASH) -g -f $(HASH_BINARY_DIST_CHECKSUM) $(MANUAL)
-	$(HASH) -g -f $(HASH_BINARY_DIST_CHECKSUM) $(LICENCE)
-	$(HASH) -g -f $(HASH_BINARY_DIST_CHECKSUM) $(HASH_BINARY_DIST)
+$(HASH_BINARY_DIST_CHECKSUM): $(HASH_BINARY_DIST) $(HASH) readme.html COPYING.txt
+	$(HASH) -go -f $(HASH_BINARY_DIST_CHECKSUM) $(HASH) readme.html COPYING.txt $(HASH_BINARY_DIST)
 
-$(LICENCE): $(DOCSDIR)\$(LICENCE)
+COPYING.txt: $(DOCSDIR)\COPYING.txt
 	$(CP) %s .
 
 $(HASH): $(OBJS)
@@ -136,4 +149,6 @@ safely_add_three_size_t_operands.obj: safely_add_three_size_t_operands.c hash.h
 
 show_usage.obj: show_usage.c hash.h config.h
 
-strip_path_prefix.obj: strip_path_prefix.c hash.h
+skip_hash_prefix.obj: skip_hash_prefix.c hash.h config.h
+
+strip_path_prefix.obj: strip_path_prefix.c hash.h config.h

@@ -9,6 +9,11 @@
 #include <string.h> // strcasecmp(), strdup()
 #include "hash.h"
 
+#if defined(__clang__)
+// disable warning about unsafe pointer arithmetic (for loop and when t is pointed to the end of string)
+#pragma clang diagnostic ignored "-Wunsafe-buffer-usage"
+#endif
+
 // WARNING: BUFFER_SIZE must be more than the size of the largest hash text
 #define BUFFER_SIZE 1024
 
