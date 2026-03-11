@@ -101,9 +101,7 @@ file on a repository's "releases" page, and **hash** will know how to skip past 
 
 	hash -c sha256:ada7...dc18 hash-8.0.1-x86-64.zip
 
-(I truncated the checksum in the above example because otherwise the line will be cut off
-when it reaches the right edge of this manual page.) This saves you the hassle of having
-to snip off the prefix before pasting the hash.
+This saves you the hassle of having to snip off the prefix before pasting the hash.
 
 If **hash** returns an error message, and you want more information, reissue the command
 with an additional `-v` (for "verbose") option.
